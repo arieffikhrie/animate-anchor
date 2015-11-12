@@ -16,52 +16,55 @@
 		this.settings = $.extend({}, defaults, options);
 		this.init();
 	}
-	AnimateAnchor.prototype = {
-		anchorTo: function() {
-			alert('anchor to function');
+	$.extend(AnimateAnchor.prototype, {
+		afterScrollHandle: function(e) {
+			var elem = this;
+			elem.trigger('afterScroll.aa');
 		},
-		init: function() {
+		jump: function() {
 			var elem = $(this.element),
 				settings = this.settings,
+				offset = settings.offset,
+				header = $(settings.header),
+				target = $(this.target);
+			if (header.length > 0) {
+				offset = header.height() + offset;
+			}
+			$('html, body').stop().animate({
+				scrollTop: target.offset().top - parseInt(offset, 10)
+			}, settings.duration, settings.easing).promise().done($.proxy(self.afterScrollHandle, elem));
+		},
+		init: function() {
+			var self = this,
+				elem = $(this.element),
+				settings = this.settings,
 				target = $(this.target),
-				location = window.location,
-				afterScrollHandle = function(e) {
-					var elem = this;
-					console.log(elem);
-					elem.trigger('afterScroll.aa');
-				},
-				doDefault = false;
+				location = window.location;
 
 			elem.on('afterScroll.aa', function(e) {
 				settings.afterScroll(e);
-				doDefault = true;
-				elem.trigger('click');
 			});
 			elem.on('click', function(e) {
-				e.stopPropagation();
 				e.preventDefault();
-				if (!doDefault) {
-					var offset = settings.offset;
-					if ($(settings.header).length > 0) {
-						offset = $(settings.header).height() + offset;
-					}
-					$('html, body').stop().animate({
-						scrollTop: target.offset().top - parseInt(offset, 10)
-					}, settings.duration, settings.easing).promise().done($.proxy(afterScrollHandle, elem));
-
-				} else {
-					doDefault = false;
-					var targetID = target.prop('id');
-					target.prop('id', '');
-					location.hash = elem.attr('href');
-					target.prop('id', targetID);
-					// this.anchorTo();
-				}
+				var targetID = target.prop('id');
+				target.prop('id', '');
+				location.hash = elem.attr('href');
+				target.prop('id', targetID);
+				self.jump();
 			});
 		}
-	};
+	});
 
 	$.fn['animateAnchor'] = function(options) {
+		var args = Array.prototype.slice.call(arguments, 1),
+			fnList = ['jump'];
+		if ($.data(this[0], 'animateAnchor_42137') && typeof(options) === 'string') {
+			if ($.inArray(options, fnList) !== -1) {
+				return $.data(this[0], 'animateAnchor_42137')[options](args);
+			} else {
+				throw "Function do not exists";
+			}
+		}
 		return this.each(function() {
 			if (!$.data(this, "animateAnchor_42137")) {
 				$.data(this, "animateAnchor_42137", new AnimateAnchor(this, options));
@@ -92,23 +95,10 @@ $(document).ready(function() {
 		}
 		elem.animateAnchor(options);
 	});
-	setTimeout(function() {
-		if (window.location.hash !== '') {
-			var hash = window.location.hash,
-				target = $(hash),
-				elem = $('a[href="' + hash + '"]');
-
-			console.log(elem);
-
-			if (elem.length > 0) {
-				var offset = elem.data('offset-top');
-				if (offset === undefined || offset === null || offset === '') {
-					offset = 75;
-				}
-				elem.animateAnchor({
-					offset: offset
-				});
-			}
-		}
-	}, 1000);
+	if (window.location.hash !== '') {
+		var hash = window.location.hash,
+			target = $(hash),
+			elem = $('a[href="' + hash + '"]');
+		elem.animateAnchor('jump');
+	}
 });
